@@ -1,0 +1,23 @@
+{
+  "name": "brute.js",
+  "version": "1.0.0",
+  "description": "A web login bruteforcer.",
+  "main": "brute.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "brute",
+    "force",
+    "guess",
+    "password",
+    "web",
+    "http",
+    "https",
+    "credential",
+    "stuffing",
+    "dictionary"
+  ],
+  "author": "Kevin Wang",
+  "license": "MIT"
+}
