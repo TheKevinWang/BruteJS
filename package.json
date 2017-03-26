@@ -19,5 +19,12 @@
     "dictionary"
   ],
   "author": "Kevin Wang",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "cheerio": "^0.22.0",
+    "limiter": "^1.1.0",
+    "meow": "^3.7.0",
+    "request": "^2.81.0"
+  }
 }

